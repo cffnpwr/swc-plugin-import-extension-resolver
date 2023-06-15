@@ -12,8 +12,8 @@ impl VisitMut for TransformVisitor {
   fn visit_mut_import_decl(&mut self, decl: &mut ImportDecl) {
     let src = decl.src.value.to_string();
 
-    let ts_re = Regex::new(r"^(\./.+)(\.ts)$").unwrap();
-    let no_extension_re = Regex::new(r"^\./.+[^(\.js)]$").unwrap();
+    let ts_re = Regex::new(r"^((\.){1,2}/.+)(\.ts)$").unwrap();
+    let no_extension_re = Regex::new(r"^(\.){1,2}/.+[^(\.js)]$").unwrap();
 
     let ts_to_js = ts_re.replace(src.as_str(), "$1.js").to_string();
     decl.src = Box::new(
@@ -41,10 +41,12 @@ mod transform_tests {
     r#"
     import { Hoge, Fuga, Piyo } from "./hogehoge";
     import HogeHoge from "./hogehoge";
+    import { pppoe } from "../pppoe";
     "#,
     r#"
     import { Hoge, Fuga, Piyo } from "./hogehoge.js";
     import HogeHoge from "./hogehoge.js";
+    import { pppoe } from "../pppoe.js";
     "#
   );
 
@@ -55,10 +57,12 @@ mod transform_tests {
     r#"
     import { Hoge, Fuga, Piyo } from "./hogehoge.ts";
     import HogeHoge from "./hogehoge.ts";
+    import { pppoe } from "../pppoe.ts";
     "#,
     r#"
     import { Hoge, Fuga, Piyo } from "./hogehoge.js";
     import HogeHoge from "./hogehoge.js";
+    import { pppoe } from "../pppoe.js";
     "#
   );
 
@@ -69,10 +73,12 @@ mod transform_tests {
     r#"
     import { Hoge, Fuga, Piyo } from "./hogehoge.js";
     import HogeHoge from "./hogehoge.js";
+    import { pppoe } from "../pppoe.js";
     "#,
     r#"
     import { Hoge, Fuga, Piyo } from "./hogehoge.js";
     import HogeHoge from "./hogehoge.js";
+    import { pppoe } from "../pppoe.js";
     "#
   );
 
