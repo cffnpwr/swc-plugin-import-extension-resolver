@@ -1,10 +1,12 @@
 use regex::Regex;
-use swc_core::ecma::{
-  ast::{ImportDecl, Program},
-  transforms::testing::test,
-  visit::{as_folder, FoldWith, VisitMut},
+use swc_core::{
+  ecma::{
+    ast::{ImportDecl, Program},
+    transforms::testing::test,
+    visit::{as_folder, FoldWith, VisitMut},
+  },
+  plugin::{plugin_transform, proxies::TransformPluginProgramMetadata},
 };
-use swc_core::plugin::{plugin_transform, proxies::TransformPluginProgramMetadata};
 
 pub struct TransformVisitor;
 
@@ -12,8 +14,8 @@ impl VisitMut for TransformVisitor {
   fn visit_mut_import_decl(&mut self, decl: &mut ImportDecl) {
     let src = decl.src.value.to_string();
 
-    let ts_re = Regex::new(r"^((\.){1,2}/.+)(\.ts)$").unwrap();
-    let no_extension_re = Regex::new(r"^(\.){1,2}/.+[^(\.js)]$").unwrap();
+    let ts_re = Regex::new(r"^([\./].+)(\.ts)$").unwrap();
+    let no_extension_re = Regex::new(r"^[\./].+[^(\.js)]$").unwrap();
 
     let ts_to_js = ts_re.replace(src.as_str(), "$1.js").to_string();
     decl.src = Box::new(
