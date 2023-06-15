@@ -37,3 +37,34 @@ pnpm add -D swc-plugin-import-extension-resolver
   }
 }
 ```
+
+## Transform example
+
+### Before
+
+```ts
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app.module";
+
+const bootstrap = async () => {
+  const app = await NestFactory.createApplicationContext(AppModule);
+  await app.close();
+};
+bootstrap().catch((error: Error) => {
+  throw error;
+});
+```
+
+### After
+
+```ts
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app.module.js";
+const bootstrap = async ()=>{
+    const app = await NestFactory.createApplicationContext(AppModule);
+    await app.close();
+};
+bootstrap().catch((error)=>{
+    throw error;
+});
+```
