@@ -30,18 +30,13 @@ pub fn process_transform(program: Program, _metadata: TransformPluginProgramMeta
   program.fold_with(&mut as_folder(TransformVisitor))
 }
 
+#[cfg(test)]
 mod transform_tests {
-  use swc_core::ecma::visit::Fold;
-
   use super::*;
-
-  fn transform_visitor() -> impl 'static + Fold + VisitMut {
-    as_folder(TransformVisitor)
-  }
 
   test!(
     Default::default(),
-    |_| transform_visitor(),
+    |_| as_folder(TransformVisitor),
     add_extension_to_no_extension_import,
     r#"
     import { Hoge, Fuga, Piyo } from "./hogehoge";
@@ -55,7 +50,7 @@ mod transform_tests {
 
   test!(
     Default::default(),
-    |_| transform_visitor(),
+    |_| as_folder(TransformVisitor),
     rewrite_extension_ts_to_js,
     r#"
     import { Hoge, Fuga, Piyo } from "./hogehoge.ts";
@@ -69,7 +64,7 @@ mod transform_tests {
 
   test!(
     Default::default(),
-    |_| transform_visitor(),
+    |_| as_folder(TransformVisitor),
     do_nothing_if_extension_is_js,
     r#"
     import { Hoge, Fuga, Piyo } from "./hogehoge.js";
@@ -83,7 +78,7 @@ mod transform_tests {
 
   test!(
     Default::default(),
-    |_| transform_visitor(),
+    |_| as_folder(TransformVisitor),
     do_nothing_if_module_import,
     r#"
     import { Hoge, Fuga, Piyo } from "hogehoge";
