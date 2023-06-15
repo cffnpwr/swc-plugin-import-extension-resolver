@@ -1,0 +1,23 @@
+[package]
+name = "swc-plugin-import-extension-resolver"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+lto = true
+
+[dependencies]
+regex = "1.8.4"
+serde = "1"
+swc_core = { version = "0.78.*", features = ["ecma_plugin_transform"] }
+
+[dev-dependencies]
+swc_ecma_parser = "0.136.0"
+swc_ecma_transforms_testing = "0.132.2"
+
+# .cargo/config defines few alias to build plugin.
+# cargo build-wasi generates wasm-wasi32 binary
+# cargo build-wasm32 generates wasm32-unknown-unknown binary.
