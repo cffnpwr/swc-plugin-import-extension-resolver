@@ -31,12 +31,20 @@ pnpm add -D swc-plugin-import-extension-resolver
   "jsc": {
     "experimental": {
       "plugins": [
-        ["swc-plugin-import-extension-resolver", {}]
+        ["swc-plugin-import-extension-resolver", {
+          "aliases": [
+            "@/*",
+            "$/*"
+          ]
+        }]
       ]
     }
   }
 }
 ```
+
+オプション`aliases`に`jsc.paths`で指定したエイリアスと同じものを指定することで、エイリアスに対しても変換を行なうことができます。
+`aliases`は設定せずにオプションなしでも使用可能です。
 
 ## Transform example
 
