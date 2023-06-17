@@ -1,3 +1,4 @@
+use globset::Glob;
 use regex::Regex;
 use serde::Deserialize;
 use swc_core::{
@@ -32,23 +33,42 @@ impl TransformVisitor {
 impl VisitMut for TransformVisitor {
   fn visit_mut_import_decl(&mut self, decl: &mut ImportDecl) {
     let src = decl.src.value.to_string();
-    let aliases_str: String = self
+    let alias_globs: Vec<Glob> = self
       .aliases
       .as_mut()
       .unwrap_or(&mut vec![])
-      .into_iter()
-      .map(|alias| format!(r"({})", alias))
-      .collect::<Vec<String>>()
-      .join("|");
+      .iter()
+      .map(|alias| Glob::new(alias).unwrap())
+      .collect();
 
-    let ts_re = Regex::new(format!(r"^([(\./)|{}].+)(\.ts)$", aliases_str).as_str()).unwrap();
-    let no_extension_re =
-      Regex::new(format!(r"^[(\./)|{}].+[^(\.js)]$", aliases_str).as_str()).unwrap();
+    let ts_re = Regex::new(r"^([\./].+)(\.ts)$").unwrap();
+    let no_extension_re = Regex::new(r"^[\./].+[^(\.js)]$").unwrap();
 
     let ts_to_js = ts_re.replace(src.as_str(), "$1.js").to_string();
-    let new_src = no_extension_re
+    let no_extension_to_js = no_extension_re
       .replace(ts_to_js.as_str(), "$0.js")
-      .to_string()
+      .to_string();
+    let new_src = alias_globs
+      .iter()
+      .any(|alias| {
+        alias
+          .compile_matcher()
+          .is_match(no_extension_to_js.as_str())
+      })
+      .then(|| {
+        let ts_re = Regex::new(r"^(.+)(\.ts)$").unwrap();
+        let no_extension_re = Regex::new(r"^.+[^(\.js)]$").unwrap();
+
+        let ts_to_js = ts_re
+          .replace(no_extension_to_js.as_str(), "$1.js")
+          .to_string();
+        let no_extension_to_js = no_extension_re
+          .replace(ts_to_js.as_str(), "$0.js")
+          .to_string();
+
+        no_extension_to_js
+      })
+      .unwrap_or(no_extension_to_js)
       .into();
 
     decl.src = Box::new(new_src);
@@ -182,6 +202,22 @@ mod transform_tests {
     import { Hoge, Fuga, Piyo } from "@/hogehoge.js";
     import HogeHoge from "@/hogehoge.js";
     import { pppoe } from "@/pppoe.js";
+    "#
+  );
+
+  test!(
+    Default::default(),
+    |_| test_visitor_with_alias(),
+    do_nothing_if_module_import_with_alias,
+    r#"
+    import { Hoge, Fuga, Piyo } from "hogehoge";
+    import HogeHoge from "hogehoge/hogehoge";
+    import FugaFuga from "@hogehoge/fugafuga";
+    "#,
+    r#"
+    import { Hoge, Fuga, Piyo } from "hogehoge";
+    import HogeHoge from "hogehoge/hogehoge";
+    import FugaFuga from "@hogehoge/fugafuga";
     "#
   );
 }
