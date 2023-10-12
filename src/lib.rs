@@ -42,12 +42,13 @@ impl VisitMut for TransformVisitor {
       .collect();
 
     let ts_re = Regex::new(r"^([\./].+)(\.ts)$").unwrap();
-    let no_extension_re = Regex::new(r"^[\./].+[^(\.js)]$").unwrap();
 
     let ts_to_js = ts_re.replace(src.as_str(), "$1.js").to_string();
-    let no_extension_to_js = no_extension_re
-      .replace(ts_to_js.as_str(), "$0.js")
-      .to_string();
+    let no_extension_to_js = if ts_to_js.starts_with(".") && !ts_to_js.ends_with(".js") {
+      format!("{}.js", ts_to_js)
+    } else {
+      ts_to_js
+    };
     let new_src = alias_globs
       .iter()
       .any(|alias| {
@@ -57,14 +58,15 @@ impl VisitMut for TransformVisitor {
       })
       .then(|| {
         let ts_re = Regex::new(r"^(.+)(\.ts)$").unwrap();
-        let no_extension_re = Regex::new(r"^.+[^(\.js)]$").unwrap();
 
         let ts_to_js = ts_re
           .replace(no_extension_to_js.as_str(), "$1.js")
           .to_string();
-        let no_extension_to_js = no_extension_re
-          .replace(ts_to_js.as_str(), "$0.js")
-          .to_string();
+        let no_extension_to_js = if !ts_to_js.ends_with(".js") {
+          format!("{}.js", ts_to_js)
+        } else {
+          ts_to_js
+        };
 
         no_extension_to_js
       })
@@ -117,11 +119,13 @@ mod transform_tests {
     import { Hoge, Fuga, Piyo } from "./hogehoge";
     import HogeHoge from "./hogehoge";
     import { pppoe } from "../pppoe";
+    import { utils } from "./utils";
     "#,
     r#"
     import { Hoge, Fuga, Piyo } from "./hogehoge.js";
     import HogeHoge from "./hogehoge.js";
     import { pppoe } from "../pppoe.js";
+    import { utils } from "./utils.js";
     "#
   );
 
