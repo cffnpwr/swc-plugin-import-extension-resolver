@@ -25,6 +25,7 @@
             rustup
             cargo
             rust-analyzer
+            nodePackages.pnpm
           ];
           shellHook = ''
             rustup override set nightly
