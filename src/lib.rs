@@ -3,7 +3,7 @@ use regex::Regex;
 use serde::Deserialize;
 use swc_core::{
   ecma::{
-    ast::{ImportDecl, Program},
+    ast::{ExportAll, ImportDecl, NamedExport, Program},
     transforms::testing::test,
     visit::{as_folder, FoldWith, VisitMut},
   },
@@ -41,40 +41,75 @@ impl VisitMut for TransformVisitor {
       .map(|alias| Glob::new(alias).unwrap())
       .collect();
 
-    let ts_re = Regex::new(r"^([\./].+)(\.ts)$").unwrap();
-
-    let ts_to_js = ts_re.replace(src.as_str(), "$1.js").to_string();
-    let no_extension_to_js = if ts_to_js.starts_with(".") && !ts_to_js.ends_with(".js") {
-      format!("{}.js", ts_to_js)
-    } else {
-      ts_to_js
-    };
-    let new_src = alias_globs
-      .iter()
-      .any(|alias| {
-        alias
-          .compile_matcher()
-          .is_match(no_extension_to_js.as_str())
-      })
-      .then(|| {
-        let ts_re = Regex::new(r"^(.+)(\.ts)$").unwrap();
-
-        let ts_to_js = ts_re
-          .replace(no_extension_to_js.as_str(), "$1.js")
-          .to_string();
-        let no_extension_to_js = if !ts_to_js.ends_with(".js") {
-          format!("{}.js", ts_to_js)
-        } else {
-          ts_to_js
-        };
-
-        no_extension_to_js
-      })
-      .unwrap_or(no_extension_to_js)
-      .into();
-
-    decl.src = Box::new(new_src);
+    decl.src = Box::new(transform_extension(src, alias_globs).into());
   }
+
+  fn visit_mut_export_all(&mut self, decl: &mut ExportAll) {
+    let src = decl.src.value.to_string();
+    let alias_globs: Vec<Glob> = self
+      .aliases
+      .as_mut()
+      .unwrap_or(&mut vec![])
+      .iter()
+      .map(|alias| Glob::new(alias).unwrap())
+      .collect();
+
+    decl.src = Box::new(transform_extension(src, alias_globs).into());
+  }
+
+  fn visit_mut_named_export(&mut self, named_export: &mut NamedExport) {
+    let src = named_export
+      .src
+      .as_mut()
+      .unwrap_or(&mut Box::new("".into()))
+      .value
+      .to_string();
+    let alias_globs: Vec<Glob> = self
+      .aliases
+      .as_mut()
+      .unwrap_or(&mut vec![])
+      .iter()
+      .map(|alias| Glob::new(alias).unwrap())
+      .collect();
+
+    named_export.src = Some(Box::new(transform_extension(src, alias_globs).into()));
+  }
+}
+
+fn transform_extension(src: String, alias_glob: Vec<Glob>) -> String {
+  let ts_re = Regex::new(r"^([\./].+)(\.ts)$").unwrap();
+
+  let ts_to_js = ts_re.replace(src.as_str(), "$1.js").to_string();
+  let no_extension_to_js = if ts_to_js.starts_with(".") && !ts_to_js.ends_with(".js") {
+    format!("{}.js", ts_to_js)
+  } else {
+    ts_to_js
+  };
+  let new_src = alias_glob
+    .iter()
+    .any(|alias| {
+      alias
+        .compile_matcher()
+        .is_match(no_extension_to_js.as_str())
+    })
+    .then(|| {
+      let ts_re = Regex::new(r"^(.+)(\.ts)$").unwrap();
+
+      let ts_to_js = ts_re
+        .replace(no_extension_to_js.as_str(), "$1.js")
+        .to_string();
+      let no_extension_to_js = if !ts_to_js.ends_with(".js") {
+        format!("{}.js", ts_to_js)
+      } else {
+        ts_to_js
+      };
+
+      no_extension_to_js
+    })
+    .unwrap_or(no_extension_to_js)
+    .into();
+
+  new_src
 }
 
 #[plugin_transform]
@@ -222,6 +257,22 @@ mod transform_tests {
     import { Hoge, Fuga, Piyo } from "hogehoge";
     import HogeHoge from "hogehoge/hogehoge";
     import FugaFuga from "@hogehoge/fugafuga";
+    "#
+  );
+
+  test!(
+    Default::default(),
+    |_| test_visitor_with_alias(),
+    for_export,
+    r#"
+    export { Hoge, Fuga, Piyo } from "hogehoge";
+    export { pppoe } from "@/pppoe.ts";
+    export { HogeHoge } from "@/hogehoge";
+    "#,
+    r#"
+    export { Hoge, Fuga, Piyo } from "hogehoge";
+    export { pppoe } from "@/pppoe.js";
+    export { HogeHoge } from "@/hogehoge.js";
     "#
   );
 }
